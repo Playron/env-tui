@@ -12,6 +12,9 @@ public class UploadSession
     private readonly List<Contact> _contacts = [];
     public IReadOnlyCollection<Contact> Contacts => _contacts.AsReadOnly();
 
+    public ExtractionStatus Status { get; private set; } = ExtractionStatus.Pending;
+    public string? ErrorMessage { get; private set; }
+
     private UploadSession() { } // EF Core
 
     public UploadSession(string fileName, string fileType, int rowsProcessed, bool usedAi = false)
@@ -24,6 +27,15 @@ public class UploadSession
     }
 
     public void AddContacts(IEnumerable<Contact> contacts) => _contacts.AddRange(contacts);
+
+    public void UpdateStatus(ExtractionStatus status, string? error = null)
+    {
+        Status = status;
+        ErrorMessage = error;
+    }
+
+    public void SetRowsProcessed(int count) => TotalRowsProcessed = count;
+    public void SetUsedAi(bool usedAi) => UsedAi = usedAi;
 
     public ExtractionResultDto ToDto(List<string>? warnings = null) => new(
         Id,

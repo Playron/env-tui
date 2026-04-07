@@ -5,6 +5,7 @@ import type {
   PreviewResultDto,
   SessionSummaryDto,
   SupportedFormatDto,
+  UploadAcceptedDto,
 } from '../types'
 
 const BASE_URL = '/api'
@@ -18,10 +19,37 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 // Upload endpoints
+
+/** Synkron upload (legacy – brukes av useFileUpload) */
 export async function uploadFile(file: File): Promise<ExtractionResultDto> {
   const form = new FormData()
   form.append('file', file)
   const res = await fetch(`${BASE_URL}/upload`, { method: 'POST', body: form })
+  return handleResponse<ExtractionResultDto>(res)
+}
+
+/** Asynkron upload – returnerer 202 med sessionId og stream-URL */
+export async function uploadFileAsync(
+  file: File,
+  signal?: AbortSignal
+): Promise<UploadAcceptedDto> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    body: form,
+    signal,
+  })
+  return handleResponse<UploadAcceptedDto>(res)
+}
+
+/** Polling-fallback: hent ferdig resultat fra DB */
+export async function getExtractionResult(
+  sessionId: string,
+  signal?: AbortSignal
+): Promise<ExtractionResultDto | null> {
+  const res = await fetch(`${BASE_URL}/upload/${sessionId}/result`, { signal })
+  if (res.status === 202) return null   // Fortsatt i prosess
   return handleResponse<ExtractionResultDto>(res)
 }
 

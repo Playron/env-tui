@@ -11,6 +11,11 @@ public class UploadSessionConfiguration : IEntityTypeConfiguration<UploadSession
         builder.Property(u => u.FileType).HasMaxLength(10).IsRequired();
         builder.Property(u => u.CreatedAt).IsRequired();
         builder.Property(u => u.UsedAi).HasDefaultValue(false);
+        builder.Property(u => u.Status)
+            .HasConversion<int>()
+            .HasDefaultValue(ExtractionStatus.Pending)
+            .IsRequired();
+        builder.Property(u => u.ErrorMessage).HasMaxLength(1000);
 
         builder.HasMany(u => u.Contacts)
             .WithOne()

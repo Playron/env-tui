@@ -71,6 +71,26 @@ export type FieldMapping =
   | 'Address'
   | ''
 
+// Asynkron upload-flyt (SSE + polling)
+export interface UploadAcceptedDto {
+  sessionId: string
+  streamUrl: string
+  resultUrl: string
+}
+
+export interface SseProgressEvent {
+  sessionId: string
+  stage: 'pending' | 'extracting' | 'regex_done' | 'ai_started' | 'ai_complete' | 'done' | 'failed'
+  message: string
+  contactsFoundSoFar?: number
+  progress?: number
+}
+
+export interface ExtractionStatusDto {
+  status: string
+  message: string
+}
+
 export const FIELD_MAPPING_LABELS: Record<string, string> = {
   FirstName:    'Fornavn',
   LastName:     'Etternavn',

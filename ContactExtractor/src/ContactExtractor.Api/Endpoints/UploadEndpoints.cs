@@ -1,3 +1,9 @@
+using System.Text.Json;
+using ContactExtractor.Api.Domain;
+using ContactExtractor.Api.Messaging.Messages;
+using ContactExtractor.Api.Services;
+using MassTransit;
+
 namespace ContactExtractor.Api.Endpoints;
 
 public static class UploadEndpoints
@@ -8,63 +14,168 @@ public static class UploadEndpoints
             .WithTags("Upload")
             .DisableAntiforgery();
 
+        // 1) Asynkron opplasting – returnerer 202 Accepted med sessionId og stream-URL
         group.MapPost("/", HandleUpload)
             .Accepts<IFormFile>("multipart/form-data")
-            .Produces<ExtractionResultDto>(200)
+            .Produces<UploadAcceptedDto>(202)
             .Produces<string>(400)
-            .WithSummary("Last opp fil og ekstraher kontakter (AI brukes automatisk ved behov)");
+            .WithSummary("Last opp fil for asynkron ekstraksjon – returnerer 202 Accepted");
 
+        // 2) SSE-stream for fremdrift
+        group.MapGet("/{sessionId:guid}/stream", HandleStream)
+            .WithSummary("SSE-stream for fremdriftshendelser under ekstraksjon");
+
+        // 3) Polling-fallback – hent ferdig resultat fra DB
+        group.MapGet("/{sessionId:guid}/result", HandleResult)
+            .Produces<ExtractionResultDto>(200)
+            .Produces<ExtractionStatusDto>(202)
+            .Produces(404)
+            .WithSummary("Hent ekstrasjonsresultat (polling-fallback)");
+
+        // 4) Forhåndsvisning av fil og kolonne-mapping-forslag (uendret)
         group.MapPost("/preview", HandlePreview)
             .Accepts<IFormFile>("multipart/form-data")
             .Produces<PreviewResultDto>(200)
             .Produces<string>(400)
             .WithSummary("Forhåndsvisning av fil og kolonne-mapping-forslag");
 
+        // 5) Støttede formater (uendret)
         group.MapGet("/supported-formats", GetSupportedFormats)
             .Produces<SupportedFormatDto[]>(200)
             .WithSummary("Hent støttede filformater");
     }
 
-    private static async Task<Results<Ok<ExtractionResultDto>, BadRequest<string>>> HandleUpload(
+    // ── POST /api/upload ──────────────────────────────────────────────────────
+    // Lagrer fil midlertidig, oppretter sesjon i DB, publiserer melding til kø.
+    private static async Task<Results<Accepted<UploadAcceptedDto>, BadRequest<string>>> HandleUpload(
         IFormFile file,
-        FileParserFactory parserFactory,
         AppDbContext db,
+        FileParserFactory parserFactory,
+        IPublishEndpoint publishEndpoint,
         CancellationToken ct)
     {
         if (file.Length is 0)
             return TypedResults.BadRequest("Filen er tom.");
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var parser = parserFactory.GetParser(extension);
 
-        if (parser is null)
+        if (parserFactory.GetParser(extension) is null)
             return TypedResults.BadRequest($"Filtypen '{extension}' støttes ikke.");
 
-        await using var stream = file.OpenReadStream();
-        List<Contact> contacts;
+        // Lagre fil midlertidig på disk
+        var tempDir = Path.Combine(Path.GetTempPath(), "contact-extractor");
+        Directory.CreateDirectory(tempDir);
+        var tempPath = Path.Combine(tempDir, $"{Guid.NewGuid()}{extension}");
 
-        try
-        {
-            contacts = await parser.ParseAsync(stream, file.FileName, ct);
-        }
-        catch (Exception ex)
-        {
-            return TypedResults.BadRequest($"Kunne ikke tolke filen: {ex.Message}");
-        }
+        await using (var fs = File.Create(tempPath))
+            await file.CopyToAsync(fs, ct);
 
-        var usedAi = contacts.Any(c => c.ExtractionSource == "ai");
-        var session = new UploadSession(file.FileName, extension, contacts.Count, usedAi);
-        session.AddContacts(contacts);
+        // Opprett sesjon i DB med status Pending
+        var session = new UploadSession(file.FileName, extension, 0);
         db.UploadSessions.Add(session);
         await db.SaveChangesAsync(ct);
 
-        var warnings = new List<string>();
-        if (usedAi)
-            warnings.Add("AI ble brukt til å ekstrahere noen kontakter. Vennligst verifiser resultatene.");
+        // Publiser til MassTransit (InMemory eller RabbitMQ)
+        await publishEndpoint.Publish(new ExtractionRequested(
+            session.Id, tempPath, file.FileName, extension), ct);
 
-        return TypedResults.Ok(session.ToDto(warnings));
+        var streamUrl = $"/api/upload/{session.Id}/stream";
+        var resultUrl = $"/api/upload/{session.Id}/result";
+
+        return TypedResults.Accepted(resultUrl,
+            new UploadAcceptedDto(session.Id, streamUrl, resultUrl));
     }
 
+    // ── GET /api/upload/{sessionId}/stream ───────────────────────────────────
+    // SSE-endepunkt. Korrekt implementasjon: skriver data: {json}\n\n manuelt.
+    // Håndterer sen tilkobling: lever terminal-event umiddelbart hvis allerede ferdig.
+    private static async Task HandleStream(
+        Guid sessionId,
+        SseProgressService progressService,
+        AppDbContext db,
+        HttpContext ctx,
+        CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-cache";
+        ctx.Response.Headers.Connection = "keep-alive";
+        ctx.Response.ContentType = "text/event-stream";
+        await ctx.Response.Body.FlushAsync(ct);
+
+        var (reader, immediateEvent) = progressService.GetReader(sessionId);
+
+        // Sesjonen er allerede fullført (channel er fjernet eller fullført)
+        if (reader is null)
+        {
+            // Sjekk DB for terminal-event basert på status
+            var session = await db.UploadSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+            if (session is null) return;
+
+            if (session.Status is ExtractionStatus.Completed or ExtractionStatus.Failed)
+            {
+                var stage = session.Status == ExtractionStatus.Completed ? "done" : "failed";
+                var msg = session.Status == ExtractionStatus.Completed
+                    ? $"Ferdig! {session.TotalRowsProcessed} kontakter ekstrahert."
+                    : $"Feil: {session.ErrorMessage}";
+                await WriteSseEventAsync(ctx, new SseProgressEvent(
+                    sessionId, stage, msg, session.TotalRowsProcessed, null), ct);
+            }
+            return;
+        }
+
+        // Sesjonen ble fullført mellom GetReader-kallet og nå (race condition)
+        if (immediateEvent is not null)
+        {
+            await WriteSseEventAsync(ctx, immediateEvent, ct);
+            return;
+        }
+
+        // Normal path: les fra aktiv channel
+        await foreach (var evt in reader.ReadAllAsync(ct))
+        {
+            await WriteSseEventAsync(ctx, evt, ct);
+            if (evt.Stage is "done" or "failed") break;
+        }
+    }
+
+    private static async Task WriteSseEventAsync(
+        HttpContext ctx, SseProgressEvent evt, CancellationToken ct)
+    {
+        var json = JsonSerializer.Serialize(evt, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+        await ctx.Response.WriteAsync($"data: {json}\n\n", ct);
+        await ctx.Response.Body.FlushAsync(ct);
+    }
+
+    // ── GET /api/upload/{sessionId}/result ───────────────────────────────────
+    // Polling-fallback: 202 mens pågår, 200 når ferdig, 404 hvis ukjent.
+    private static async Task<Results<Ok<ExtractionResultDto>, Accepted<ExtractionStatusDto>, NotFound>>
+        HandleResult(
+            Guid sessionId,
+            AppDbContext db,
+            CancellationToken ct)
+    {
+        var session = await db.UploadSessions
+            .AsNoTracking()
+            .Include(s => s.Contacts)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+        if (session is null)
+            return TypedResults.NotFound();
+
+        if (session.Status is ExtractionStatus.Completed or ExtractionStatus.Failed)
+            return TypedResults.Ok(session.ToDto());
+
+        return TypedResults.Accepted(
+            $"/api/upload/{sessionId}/result",
+            new ExtractionStatusDto(session.Status.ToString(), "Ekstraksjon pågår..."));
+    }
+
+    // ── POST /api/upload/preview ──────────────────────────────────────────────
     private static async Task<Results<Ok<PreviewResultDto>, BadRequest<string>>> HandlePreview(
         IFormFile file,
         FileParserFactory parserFactory,
@@ -92,14 +203,15 @@ public static class UploadEndpoints
         }
     }
 
+    // ── GET /api/upload/supported-formats ────────────────────────────────────
     private static Ok<SupportedFormatDto[]> GetSupportedFormats() =>
         TypedResults.Ok<SupportedFormatDto[]>(
         [
-            new(".csv",  "Kommaseparert fil",       "📄"),
-            new(".xlsx", "Excel-regneark",           "📊"),
-            new(".pdf",  "PDF-dokument (AI-støttet)","📕"),
+            new(".csv",  "Kommaseparert fil",        "📄"),
+            new(".xlsx", "Excel-regneark",            "📊"),
+            new(".pdf",  "PDF-dokument (AI-støttet)", "📕"),
             new(".docx", "Word-dokument (AI-støttet)","📝"),
-            new(".txt",  "Tekstfil (AI-støttet)",    "📃"),
-            new(".vcf",  "vCard-kontaktfil",         "👤")
+            new(".txt",  "Tekstfil (AI-støttet)",     "📃"),
+            new(".vcf",  "vCard-kontaktfil",          "👤")
         ]);
 }
