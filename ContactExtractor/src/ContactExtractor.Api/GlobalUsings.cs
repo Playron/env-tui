@@ -1,0 +1,9 @@
+global using ContactExtractor.Api.AI;
+global using ContactExtractor.Api.Contracts;
+global using ContactExtractor.Api.Domain;
+global using ContactExtractor.Api.Domain.ValueObjects;
+global using ContactExtractor.Api.Infrastructure;
+global using ContactExtractor.Api.Services;
+global using Microsoft.AspNetCore.Http.HttpResults;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.Options;
