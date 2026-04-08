@@ -4,7 +4,6 @@ using ContactExtractor.Api.Services;
 using ContactExtractor.Api.Services.Parsers;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using OfficeOpenXml;
 using System.Text;
@@ -59,19 +58,19 @@ public class ExcelParserTests
 
     [Fact]
     public void CanParse_ReturnsTrueForXlsx() =>
-        CreateParser().CanParse(".xlsx").Should().BeTrue();
+        CreateParser().CanParse(".xlsx").ShouldBeTrue();
 
     [Fact]
     public void CanParse_ReturnsTrueForXls() =>
-        CreateParser().CanParse(".xls").Should().BeTrue();
+        CreateParser().CanParse(".xls").ShouldBeTrue();
 
     [Fact]
     public void CanParse_ReturnsFalseForOtherExtensions()
     {
         var p = CreateParser();
-        p.CanParse(".csv").Should().BeFalse();
-        p.CanParse(".pdf").Should().BeFalse();
-        p.CanParse(".docx").Should().BeFalse();
+        p.CanParse(".csv").ShouldBeFalse();
+        p.CanParse(".pdf").ShouldBeFalse();
+        p.CanParse(".docx").ShouldBeFalse();
     }
 
     [Fact]
@@ -92,10 +91,10 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "contacts.xlsx");
 
-        contacts.Should().HaveCount(2);
-        contacts.Should().Contain(c => c.Email == "alice@example.com");
-        contacts.Should().Contain(c => c.Email == "bob@example.com");
-        contacts[0].Phone.Should().NotBeNullOrEmpty();
+        contacts.ShouldHaveCount(2);
+        contacts.ShouldContain(c => c.Email == "alice@example.com");
+        contacts.ShouldContain(c => c.Email == "bob@example.com");
+        contacts[0].Phone.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -115,12 +114,12 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "kontakter.xlsx");
 
-        contacts.Should().HaveCount(1);
+        contacts.ShouldHaveCount(1);
         var c = contacts[0];
-        c.FirstName.Should().Be("Ola");
-        c.LastName.Should().Be("Nordmann");
-        c.Email.Should().Be("ola@example.no");
-        c.Phone.Should().NotBeNullOrEmpty();
+        c.FirstName.ShouldBe("Ola");
+        c.LastName.ShouldBe("Nordmann");
+        c.Email.ShouldBe("ola@example.no");
+        c.Phone.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -140,9 +139,9 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
 
-        contacts.Should().HaveCount(1);
-        contacts[0].Organization.Should().Be("Norsk AS");
-        contacts[0].Title.Should().Be("CEO");
+        contacts.ShouldHaveCount(1);
+        contacts[0].Organization.ShouldBe("Norsk AS");
+        contacts[0].Title.ShouldBe("CEO");
     }
 
     [Fact]
@@ -156,8 +155,8 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
 
-        contacts.Should().HaveCount(1);
-        contacts[0].Confidence.Should().Be(0.9);
+        contacts.ShouldHaveCount(1);
+        contacts[0].Confidence.ShouldBe(0.9);
     }
 
     [Fact]
@@ -165,7 +164,7 @@ public class ExcelParserTests
     {
         using var stream = CreateXlsxStream(_ => { });
         var contacts = await CreateParser().ParseAsync(stream, "empty.xlsx");
-        contacts.Should().BeEmpty();
+        contacts.ShouldBeEmpty();
     }
 
     [Fact]
@@ -179,7 +178,7 @@ public class ExcelParserTests
         });
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
-        contacts.Should().BeEmpty();
+        contacts.ShouldBeEmpty();
     }
 
     [Fact]
@@ -194,7 +193,7 @@ public class ExcelParserTests
         });
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
-        contacts.Should().HaveCount(3);
+        contacts.ShouldHaveCount(3);
     }
 
     [Fact]
@@ -212,9 +211,10 @@ public class ExcelParserTests
 
         var preview = await CreateParser().PreviewAsync(stream, "contacts.xlsx");
 
-        preview.Headers.Should().Contain("Name").And.Contain("Email");
-        preview.SampleRows.Should().HaveCount(2);
-        preview.SuggestedMappings.Should().Contain(m => m.MappedTo == "Email");
+        preview.Headers.ShouldContain("Name");
+        preview.Headers.ShouldContain("Email");
+        preview.SampleRows.ShouldHaveCount(2);
+        preview.SuggestedMappings.ShouldContain(m => m.MappedTo == "Email");
     }
 
     [Fact]
@@ -223,8 +223,8 @@ public class ExcelParserTests
         using var stream = CreateXlsxStream(_ => { });
         var preview = await CreateParser().PreviewAsync(stream, "empty.xlsx");
 
-        preview.Headers.Should().BeEmpty();
-        preview.SampleRows.Should().BeEmpty();
+        preview.Headers.ShouldBeEmpty();
+        preview.SampleRows.ShouldBeEmpty();
     }
 }
 
@@ -305,14 +305,14 @@ public class PdfParserTests
 
     [Fact]
     public void CanParse_ReturnsTrueForPdf() =>
-        CreateParser().CanParse(".pdf").Should().BeTrue();
+        CreateParser().CanParse(".pdf").ShouldBeTrue();
 
     [Fact]
     public void CanParse_ReturnsFalseForOtherExtensions()
     {
         var p = CreateParser();
-        p.CanParse(".xlsx").Should().BeFalse();
-        p.CanParse(".docx").Should().BeFalse();
+        p.CanParse(".xlsx").ShouldBeFalse();
+        p.CanParse(".docx").ShouldBeFalse();
     }
 
     [Fact]
@@ -329,9 +329,9 @@ public class PdfParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.pdf");
 
-        contacts.Should().HaveCountGreaterOrEqualTo(2);
-        contacts.Should().Contain(c => c.Email == "alice@example.com");
-        contacts.Should().Contain(c => c.Email == "bob@example.com");
+        contacts.Count.ShouldBeGreaterThanOrEqualTo(2);
+        contacts.ShouldContain(c => c.Email == "alice@example.com");
+        contacts.ShouldContain(c => c.Email == "bob@example.com");
     }
 
     [Fact]
@@ -343,8 +343,7 @@ public class PdfParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.pdf");
 
-        contacts.Should().AllSatisfy(c =>
-            c.ExtractionSource.Should().Be("regex"));
+        contacts.ShouldAllBe(c => c.ExtractionSource == "regex");
     }
 
     [Fact]
@@ -363,7 +362,7 @@ public class PdfParserTests
         using var stream = CreatePdfStream("Kari Nordmann", "kari@example.no");
         var contacts = await CreateParser(fakeLlm).ParseAsync(stream, "test.pdf");
 
-        contacts.Should().Contain(c => c.Email == "kari@example.no");
+        contacts.ShouldContain(c => c.Email == "kari@example.no");
     }
 
     [Fact]
@@ -375,8 +374,8 @@ public class PdfParserTests
         using var stream = CreatePdfStream("Jane Doe", "jane@example.com");
         var contacts = await CreateParser(failingLlm).ParseAsync(stream, "test.pdf");
 
-        contacts.Should().Contain(c => c.Email == "jane@example.com");
-        contacts.Should().AllSatisfy(c => c.ExtractionSource.Should().Be("regex"));
+        contacts.ShouldContain(c => c.Email == "jane@example.com");
+        contacts.ShouldAllBe(c => c.ExtractionSource == "regex");
     }
 
     [Fact]
@@ -384,7 +383,7 @@ public class PdfParserTests
     {
         using var stream = CreatePdfStream(); // no text lines
         var contacts = await CreateParser().ParseAsync(stream, "empty.pdf");
-        contacts.Should().BeEmpty();
+        contacts.ShouldBeEmpty();
     }
 
     [Fact]
@@ -395,9 +394,9 @@ public class PdfParserTests
 
         var preview = await CreateParser().PreviewAsync(stream, "test.pdf");
 
-        preview.SampleRows.Should().HaveCount(5);
-        preview.Headers.Should().Contain("text");
-        preview.FileType.Should().Be(".pdf");
+        preview.SampleRows.ShouldHaveCount(5);
+        preview.Headers.ShouldContain("text");
+        preview.FileType.ShouldBe(".pdf");
     }
 
     [Fact]
@@ -410,9 +409,9 @@ public class PdfParserTests
         var (contacts, rawText) = await CreateParser()
             .ParseWithoutAiAsync(stream, "test.pdf");
 
-        rawText.Should().Contain("alice@example.com");
-        contacts.Should().Contain(c => c.Email == "alice@example.com");
-        contacts.Should().AllSatisfy(c => c.ExtractionSource.Should().Be("regex"));
+        rawText.ShouldContain("alice@example.com");
+        contacts.ShouldContain(c => c.Email == "alice@example.com");
+        contacts.ShouldAllBe(c => c.ExtractionSource == "regex");
     }
 }
 
@@ -448,15 +447,15 @@ public class WordParserTests
 
     [Fact]
     public void CanParse_ReturnsTrueForDocx() =>
-        CreateParser().CanParse(".docx").Should().BeTrue();
+        CreateParser().CanParse(".docx").ShouldBeTrue();
 
     [Fact]
     public void CanParse_ReturnsFalseForOtherExtensions()
     {
         var p = CreateParser();
-        p.CanParse(".pdf").Should().BeFalse();
-        p.CanParse(".xlsx").Should().BeFalse();
-        p.CanParse(".doc").Should().BeFalse();
+        p.CanParse(".pdf").ShouldBeFalse();
+        p.CanParse(".xlsx").ShouldBeFalse();
+        p.CanParse(".doc").ShouldBeFalse();
     }
 
     [Fact]
@@ -472,9 +471,9 @@ public class WordParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.docx");
 
-        contacts.Should().HaveCountGreaterOrEqualTo(2);
-        contacts.Should().Contain(c => c.Email == "alice@example.com");
-        contacts.Should().Contain(c => c.Email == "bob@example.com");
+        contacts.Count.ShouldBeGreaterThanOrEqualTo(2);
+        contacts.ShouldContain(c => c.Email == "alice@example.com");
+        contacts.ShouldContain(c => c.Email == "bob@example.com");
     }
 
     [Fact]
@@ -486,8 +485,7 @@ public class WordParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.docx");
 
-        contacts.Should().AllSatisfy(c =>
-            c.ExtractionSource.Should().Be("regex"));
+        contacts.ShouldAllBe(c => c.ExtractionSource == "regex");
     }
 
     [Fact]
@@ -505,7 +503,7 @@ public class WordParserTests
         using var stream = CreateDocxStream("Ola Nordmann", "ola@example.no");
         var contacts = await CreateParser(fakeLlm).ParseAsync(stream, "test.docx");
 
-        contacts.Should().Contain(c => c.Email == "ola@example.no");
+        contacts.ShouldContain(c => c.Email == "ola@example.no");
     }
 
     [Fact]
@@ -516,8 +514,8 @@ public class WordParserTests
         using var stream = CreateDocxStream("Jane Doe", "jane@example.com");
         var contacts = await CreateParser(failingLlm).ParseAsync(stream, "test.docx");
 
-        contacts.Should().Contain(c => c.Email == "jane@example.com");
-        contacts.Should().AllSatisfy(c => c.ExtractionSource.Should().Be("regex"));
+        contacts.ShouldContain(c => c.Email == "jane@example.com");
+        contacts.ShouldAllBe(c => c.ExtractionSource == "regex");
     }
 
     [Fact]
@@ -525,7 +523,7 @@ public class WordParserTests
     {
         using var stream = CreateDocxStream(); // no paragraphs
         var contacts = await CreateParser().ParseAsync(stream, "empty.docx");
-        contacts.Should().BeEmpty();
+        contacts.ShouldBeEmpty();
     }
 
     [Fact]
@@ -536,9 +534,9 @@ public class WordParserTests
 
         var preview = await CreateParser().PreviewAsync(stream, "test.docx");
 
-        preview.SampleRows.Should().HaveCount(5);
-        preview.Headers.Should().Contain("text");
-        preview.FileType.Should().Be(".docx");
+        preview.SampleRows.ShouldHaveCount(5);
+        preview.Headers.ShouldContain("text");
+        preview.FileType.ShouldBe(".docx");
     }
 
     [Fact]
@@ -546,7 +544,7 @@ public class WordParserTests
     {
         using var stream = CreateDocxStream();
         var preview = await CreateParser().PreviewAsync(stream, "empty.docx");
-        preview.SampleRows.Should().BeEmpty();
+        preview.SampleRows.ShouldBeEmpty();
     }
 
     [Fact]
@@ -559,7 +557,7 @@ public class WordParserTests
         var (contacts, rawText) = await CreateParser()
             .ParseWithoutAiAsync(stream, "test.docx");
 
-        rawText.Should().Contain("alice@example.com");
-        contacts.Should().Contain(c => c.Email == "alice@example.com");
+        rawText.ShouldContain("alice@example.com");
+        contacts.ShouldContain(c => c.Email == "alice@example.com");
     }
 }

@@ -1,5 +1,4 @@
 using ContactExtractor.Api.Services;
-using FluentAssertions;
 
 namespace ContactExtractor.Tests;
 
@@ -17,7 +16,7 @@ public class ContactValidationServiceTests
     [InlineData("",            false)]
     public void ValidatePhone_ReturnsExpected(string? phone, bool expected)
     {
-        _service.ValidatePhone(phone).Should().Be(expected);
+        _service.ValidatePhone(phone).ShouldBe(expected);
     }
 
     [Theory]
@@ -33,14 +32,14 @@ public class ContactValidationServiceTests
         if (!expectedFormat)
         {
             var result = await _service.ValidateEmailAsync(email);
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
         else
         {
             // Valid format – may return true or false depending on DNS
             // Just ensure no exception is thrown
             var act = async () => await _service.ValidateEmailAsync(email);
-            await act.Should().NotThrowAsync();
+            await Should.NotThrowAsync(act);
         }
     }
 }
