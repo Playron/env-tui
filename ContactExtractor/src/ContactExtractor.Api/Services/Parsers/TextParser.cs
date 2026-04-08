@@ -20,13 +20,13 @@ public class TextParser(
 
         var regexContacts = extractionService.ExtractFromText(rawText, sessionId);
 
-        if (ShouldUseAi(regexContacts))
+        if (ContactMergeHelper.ShouldUseAi(regexContacts))
         {
             try
             {
                 var truncated = rawText[..Math.Min(rawText.Length, settings.Value.MaxInputCharacters)];
                 var llmResult = await llmService.ExtractContactsAsync(truncated, $"Tekstfil: {fileName}", ct);
-                return MergeResults(sessionId, regexContacts, llmResult);
+                return ContactMergeHelper.Merge(sessionId, regexContacts, llmResult);
             }
             catch
             {
@@ -55,40 +55,15 @@ public class TextParser(
         return new PreviewResultDto(fileName, ".txt", ["text"], preview, []);
     }
 
-    private static bool ShouldUseAi(List<Contact> regexContacts) =>
-        regexContacts.Count < 2 || regexContacts.Any(c => c.Confidence < 0.5);
-
-    private static List<Contact> MergeResults(
-        Guid sessionId, List<Contact> regexContacts, LlmExtractionResult llmResult)
+    public async Task<(List<Contact> Contacts, string RawText)> ParseWithoutAiAsync(
+        Stream fileStream, string fileName, CancellationToken ct = default)
     {
-        var merged = new List<Contact>(regexContacts);
-
-        foreach (var llm in llmResult.Contacts)
-        {
-            var isDuplicate = regexContacts.Any(r =>
-                (!string.IsNullOrEmpty(r.Email) &&
-                 string.Equals(r.Email, llm.Email, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(r.FullName) &&
-                 string.Equals(r.FullName, llm.FullName, StringComparison.OrdinalIgnoreCase)));
-
-            if (isDuplicate) continue;
-
-            var contact = new Contact(sessionId)
-            {
-                FullName = llm.FullName,
-                FirstName = llm.FirstName,
-                LastName = llm.LastName,
-                Organization = llm.Organization,
-                Title = llm.Title,
-                Address = llm.Address,
-                Confidence = llmResult.OverallConfidence * 0.9,
-                ExtractionSource = "ai"
-            };
-            contact.SetEmail(EmailAddress.TryCreate(llm.Email));
-            contact.SetPhone(PhoneNumber.TryCreate(llm.Phone));
-            merged.Add(contact);
-        }
-
-        return merged;
+        var sessionId = Guid.CreateVersion7();
+        using var reader = new StreamReader(fileStream);
+        var rawText = await reader.ReadToEndAsync(ct);
+        var contacts = string.IsNullOrWhiteSpace(rawText)
+            ? []
+            : extractionService.ExtractFromText(rawText, sessionId);
+        return (contacts, rawText);
     }
 }

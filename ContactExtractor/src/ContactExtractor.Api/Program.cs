@@ -1,7 +1,9 @@
 using ContactExtractor.Api.AI;
 using ContactExtractor.Api.Endpoints;
 using ContactExtractor.Api.Infrastructure;
+using ContactExtractor.Api.Messaging.Consumers;
 using ContactExtractor.Api.Services;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,37 @@ builder.Services.Scan(scan => scan
 
 builder.Services.AddScoped<FileParserFactory>();
 builder.Services.AddScoped<ContactExtractionService>();
+
+// SSE-bro mellom consumer og klient (singleton – holder channels per sesjon)
+builder.Services.AddSingleton<SseProgressService>();
+
+// MassTransit – InMemory for utvikling, RabbitMQ for produksjon
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<ExtractionConsumer>();
+
+    if (builder.Configuration.GetValue<bool>("UseRabbitMq"))
+    {
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(builder.Configuration.GetConnectionString("RabbitMq") ?? "localhost");
+            cfg.ReceiveEndpoint("extraction-queue", e =>
+            {
+                e.PrefetchCount = 3;  // Maks 3 samtidige AI-ekstraksjoner
+                e.ConfigureConsumer<ExtractionConsumer>(context);
+            });
+        });
+    }
+    else
+    {
+        // InMemory – ingen RabbitMQ nødvendig for utvikling
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConcurrentMessageLimit = 3;  // Tilsvarer PrefetchCount for InMemory
+            cfg.ConfigureEndpoints(context);
+        });
+    }
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
