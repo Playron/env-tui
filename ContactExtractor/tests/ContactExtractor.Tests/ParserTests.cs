@@ -2,6 +2,7 @@ using ContactExtractor.Api.AI;
 using ContactExtractor.Api.Contracts;
 using ContactExtractor.Api.Services;
 using ContactExtractor.Api.Services.Parsers;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Options;
@@ -91,7 +92,7 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "contacts.xlsx");
 
-        contacts.ShouldHaveCount(2);
+        contacts.Count.ShouldBe(2);
         contacts.ShouldContain(c => c.Email == "alice@example.com");
         contacts.ShouldContain(c => c.Email == "bob@example.com");
         contacts[0].Phone.ShouldNotBeNullOrEmpty();
@@ -114,7 +115,7 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "kontakter.xlsx");
 
-        contacts.ShouldHaveCount(1);
+        contacts.Count.ShouldBe(1);
         var c = contacts[0];
         c.FirstName.ShouldBe("Ola");
         c.LastName.ShouldBe("Nordmann");
@@ -139,7 +140,7 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
 
-        contacts.ShouldHaveCount(1);
+        contacts.Count.ShouldBe(1);
         contacts[0].Organization.ShouldBe("Norsk AS");
         contacts[0].Title.ShouldBe("CEO");
     }
@@ -155,7 +156,7 @@ public class ExcelParserTests
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
 
-        contacts.ShouldHaveCount(1);
+        contacts.Count.ShouldBe(1);
         contacts[0].Confidence.ShouldBe(0.9);
     }
 
@@ -193,7 +194,7 @@ public class ExcelParserTests
         });
 
         var contacts = await CreateParser().ParseAsync(stream, "test.xlsx");
-        contacts.ShouldHaveCount(3);
+        contacts.Count.ShouldBe(3);
     }
 
     [Fact]
@@ -213,7 +214,7 @@ public class ExcelParserTests
 
         preview.Headers.ShouldContain("Name");
         preview.Headers.ShouldContain("Email");
-        preview.SampleRows.ShouldHaveCount(2);
+        preview.SampleRows.Count.ShouldBe(2);
         preview.SuggestedMappings.ShouldContain(m => m.MappedTo == "Email");
     }
 
@@ -394,7 +395,7 @@ public class PdfParserTests
 
         var preview = await CreateParser().PreviewAsync(stream, "test.pdf");
 
-        preview.SampleRows.ShouldHaveCount(5);
+        preview.SampleRows.Count.ShouldBe(5);
         preview.Headers.ShouldContain("text");
         preview.FileType.ShouldBe(".pdf");
     }
@@ -534,7 +535,7 @@ public class WordParserTests
 
         var preview = await CreateParser().PreviewAsync(stream, "test.docx");
 
-        preview.SampleRows.ShouldHaveCount(5);
+        preview.SampleRows.Count.ShouldBe(5);
         preview.Headers.ShouldContain("text");
         preview.FileType.ShouldBe(".docx");
     }
