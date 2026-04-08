@@ -1,5 +1,3 @@
-using ContactExtractor.Api.Auth;
-
 namespace ContactExtractor.Api.Endpoints;
 
 public static class DashboardEndpoints

@@ -1,6 +1,3 @@
-using ContactExtractor.Api.Auth;
-using ContactExtractor.Api.Services;
-
 namespace ContactExtractor.Api.Endpoints;
 
 public static class WebhookEndpoints

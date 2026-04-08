@@ -1,9 +1,6 @@
-using ContactExtractor.Api.AI;
-using ContactExtractor.Api.Auth;
+using AspireApp.ServiceDefaults;
 using ContactExtractor.Api.Endpoints;
-using ContactExtractor.Api.Infrastructure;
 using ContactExtractor.Api.Messaging.Consumers;
-using ContactExtractor.Api.Services;
 using ContactExtractor.Api.Services.Integrations;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -195,11 +192,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ContactExtractor v1"));
-
-    // Auto-migrering i utvikling
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
 }
 
 // Endpoint-mapping

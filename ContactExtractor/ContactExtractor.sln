@@ -7,9 +7,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContactExtractor.Api", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContactExtractor.Tests", "tests\ContactExtractor.Tests\ContactExtractor.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContactExtractor.AppHost", "src\ContactExtractor.AppHost\ContactExtractor.AppHost.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireApp.AppHost", "src\AppHost\AspireApp.AppHost\AspireApp.AppHost.csproj", "{DA0FFA26-3E3C-4043-9276-C85C2BAA504E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContactExtractor.ServiceDefaults", "src\ContactExtractor.ServiceDefaults\ContactExtractor.ServiceDefaults.csproj", "{D4E5F6A7-B8C9-0123-DEFA-234567890123}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireApp.ServiceDefaults", "src\AppHost\AspireApp.ServiceDefaults\AspireApp.ServiceDefaults.csproj", "{A01D2D48-9529-4385-89F7-B2F0D9A0D06D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContactExtractor.MigrationService", "src\ContactExtractor.MigrationService\ContactExtractor.MigrationService.csproj", "{5CB09306-3046-42D0-A9AB-B71D3C341C4B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Aspire", "Aspire", "{1BB36BFA-4C41-4901-A71A-3B0F87EE7C48}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,16 +29,25 @@ Global
 		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D4E5F6A7-B8C9-0123-DEFA-234567890123}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D4E5F6A7-B8C9-0123-DEFA-234567890123}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D4E5F6A7-B8C9-0123-DEFA-234567890123}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D4E5F6A7-B8C9-0123-DEFA-234567890123}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA0FFA26-3E3C-4043-9276-C85C2BAA504E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA0FFA26-3E3C-4043-9276-C85C2BAA504E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA0FFA26-3E3C-4043-9276-C85C2BAA504E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA0FFA26-3E3C-4043-9276-C85C2BAA504E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A01D2D48-9529-4385-89F7-B2F0D9A0D06D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A01D2D48-9529-4385-89F7-B2F0D9A0D06D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A01D2D48-9529-4385-89F7-B2F0D9A0D06D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A01D2D48-9529-4385-89F7-B2F0D9A0D06D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CB09306-3046-42D0-A9AB-B71D3C341C4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CB09306-3046-42D0-A9AB-B71D3C341C4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CB09306-3046-42D0-A9AB-B71D3C341C4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CB09306-3046-42D0-A9AB-B71D3C341C4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DA0FFA26-3E3C-4043-9276-C85C2BAA504E} = {1BB36BFA-4C41-4901-A71A-3B0F87EE7C48}
+		{A01D2D48-9529-4385-89F7-B2F0D9A0D06D} = {1BB36BFA-4C41-4901-A71A-3B0F87EE7C48}
+		{5CB09306-3046-42D0-A9AB-B71D3C341C4B} = {1BB36BFA-4C41-4901-A71A-3B0F87EE7C48}
 	EndGlobalSection
 EndGlobal

@@ -1,5 +1,4 @@
 using ContactExtractor.Api.AI;
-using ContactExtractor.Api.Domain;
 using ContactExtractor.Api.Domain.ValueObjects;
 using ContactExtractor.Api.Services;
 using ContactExtractor.Api.Services.Parsers;
@@ -195,7 +194,7 @@ public class VCardParserTests
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
         var contacts = await _parser.ParseAsync(stream, "test.vcf");
 
-        contacts.ShouldHaveCount(1);
+        contacts.Count.ShouldBe(1);
         var c = contacts[0];
         c.FullName.ShouldBe("Ola Nordmann");
         c.FirstName.ShouldBe("Ola");
@@ -223,7 +222,7 @@ public class VCardParserTests
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
         var contacts = await _parser.ParseAsync(stream, "test.vcf");
-        contacts.ShouldHaveCount(2);
+        contacts.Count.ShouldBe(2);
     }
 }
 
@@ -290,7 +289,7 @@ public class LlmExtractionResultDeserializationTests
         var result = JsonSerializer.Deserialize<LlmExtractionResult>(json, options);
 
         result.ShouldNotBeNull();
-        result!.Contacts.ShouldHaveCount(1);
+        result!.Contacts.Count.ShouldBe(1);
         result.OverallConfidence.ShouldBe(0.95);
         result.Contacts[0].Email.ShouldBe("ola@example.no");
         result.Contacts[0].Organization.ShouldBe("Eksempel AS");

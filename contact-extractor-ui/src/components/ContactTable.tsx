@@ -144,7 +144,7 @@ export function ContactTable({ contacts, sessionId, onContactUpdated }: ContactT
               filtered.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2">
-                    {renderCell(c, 'fullName', c.fullName ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || undefined)}
+                    {renderCell(c, 'fullName', c.fullName ?? (`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || undefined))}
                   </td>
                   <td className="px-3 py-2">{renderCell(c, 'email', c.email)}</td>
                   <td className="px-3 py-2">{renderCell(c, 'phone', c.phone)}</td>

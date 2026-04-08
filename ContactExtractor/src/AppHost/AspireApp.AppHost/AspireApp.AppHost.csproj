@@ -1,0 +1,26 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>084cdc97-fb31-41d5-bda8-034b21075356</UserSecretsId>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\ContactExtractor.Api\ContactExtractor.Api.csproj" />
+    <ProjectReference Include="..\..\ContactExtractor.MigrationService\ContactExtractor.MigrationService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.2.1-preview.1.26180.6" />
+    <PackageReference Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.2.1-beta.532" />
+  </ItemGroup>
+
+
+</Project>

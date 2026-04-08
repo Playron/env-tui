@@ -1,6 +1,4 @@
-using ContactExtractor.Api.Domain;
 using ContactExtractor.Api.Messaging.Messages;
-using ContactExtractor.Api.Services;
 using MassTransit;
 
 namespace ContactExtractor.Api.Messaging.Consumers;

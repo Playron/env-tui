@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-
 namespace ContactExtractor.Api.Services.Integrations;
 
 public class GoogleContactsExporter(HttpClient httpClient) : ICrmExporter

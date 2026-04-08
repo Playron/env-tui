@@ -9,16 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Aspire service defaults -->
-    <ProjectReference Include="..\ContactExtractor.ServiceDefaults\ContactExtractor.ServiceDefaults.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- Aspire integrations -->
-    <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.4.1" />
-    <PackageReference Include="Aspire.RabbitMQ.Client" Version="9.4.1" />
-    <PackageReference Include="Aspire.Keycloak.Authentication" Version="9.4.1" />
-    <PackageReference Include="CommunityToolkit.Aspire.OllamaSharp" Version="9.5.0" />
+    <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.1" />
+    <PackageReference Include="Aspire.RabbitMQ.Client" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.2.1-preview.1.26180.6" />
+    <PackageReference Include="CommunityToolkit.Aspire.OllamaSharp" Version="13.2.1-beta.532" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,9 +31,13 @@
     <PackageReference Include="Scrutor" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
-    <PackageReference Include="MassTransit" Version="9.0.1" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="9.0.1" />
+    <PackageReference Include="MassTransit" Version="9.2.0-develop.108" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.0-develop.108" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppHost\AspireApp.ServiceDefaults\AspireApp.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

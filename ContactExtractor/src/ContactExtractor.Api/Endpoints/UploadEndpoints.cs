@@ -1,8 +1,6 @@
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
-using ContactExtractor.Api.Domain;
 using ContactExtractor.Api.Messaging.Messages;
-using ContactExtractor.Api.Services;
 using MassTransit;
 
 namespace ContactExtractor.Api.Endpoints;

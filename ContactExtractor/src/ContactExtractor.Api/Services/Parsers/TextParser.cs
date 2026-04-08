@@ -1,6 +1,3 @@
-using ContactExtractor.Api.AI;
-using Microsoft.Extensions.Options;
-
 namespace ContactExtractor.Api.Services.Parsers;
 
 public class TextParser(
