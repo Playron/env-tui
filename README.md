@@ -3,6 +3,17 @@
 Fullstack-applikasjon for å ekstrahere strukturert kontaktinformasjon fra ulike filformater.
 Bruker AI (Claude, OpenAI eller Ollama) som intelligent fallback for ustrukturerte filer.
 
+## Funksjoner
+
+| Fase | Funksjon |
+|------|----------|
+| **Fase 1** | Filparsing (CSV, Excel, PDF, Word, TXT, VCF), EF Core + SQLite, React-frontend |
+| **Fase 2** | AI-ekstraksjon (Claude, OpenAI, Ollama), konfigurerbar via appsettings |
+| **Fase 3** | Asynkron arkitektur (MassTransit + InMemory/RabbitMQ), SSE-streaming |
+| **Fase 4** | Keycloak JWT-autentisering (valgfri, `EnableAuth: false` for utvikling) |
+| **Fase 5** | Duplikatdeteksjon, kontaktvalidering, navnenormalisering via AI, tagging |
+| **Fase 6** | Dashboard, audit-logg, webhooks, CRM-eksport (HubSpot, Google), alle eksportformater |
+
 ## Støttede filformater
 
 | Format | Ekstraksjon |
@@ -14,23 +25,44 @@ Bruker AI (Claude, OpenAI eller Ollama) som intelligent fallback for ustrukturer
 | `.docx` | Regex → AI-fallback |
 | `.txt` | Regex → AI-fallback |
 
+## Eksportformater
+
+| Format | Endepunkt |
+|--------|-----------|
+| Standard CSV | `POST /api/export/{id}/csv` |
+| Excel (.xlsx) | `POST /api/export/{id}/excel` |
+| vCard (.vcf) | `POST /api/export/{id}/vcard` |
+| Google Contacts CSV | `POST /api/export/{id}/google` |
+| Outlook CSV | `POST /api/export/{id}/outlook` |
+
 ## Teknologistabel
 
 - **Backend:** .NET 10 Minimal API (C#) — ingen controllers, kun `MapGroup/MapPost/MapGet`
-- **ORM:** Entity Framework Core med SQLite
-- **AI:** `ILlmService` med støtte for Claude, OpenAI og Ollama via `HttpClient`
-- **Frontend:** React 18 + TypeScript + Vite
-- **Styling:** Tailwind CSS
+- **ORM:** Entity Framework Core 9 med SQLite (utvikling) / SQL Server (produksjon)
+- **AI:** Abstrakt `ILlmService` — Claude, OpenAI eller Ollama
+- **Meldingskø:** MassTransit med InMemory (utvikling) eller RabbitMQ (produksjon)
+- **Sanntid:** Server-Sent Events via `IAsyncEnumerable` + `Channel<T>`
+- **Auth:** Keycloak (JWT Bearer), valgfri i utvikling
+- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS
 
 ## Forutsetninger
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 20+](https://nodejs.org/) og npm
 - (Valgfritt) API-nøkkel for Claude/OpenAI, eller Ollama kjørende lokalt
+- (Fase 3+) Docker for RabbitMQ (valgfri — InMemory brukes som standard)
+- (Fase 4+) Docker for Keycloak (valgfri — `EnableAuth: false` for utvikling)
 
 ## Oppsett og kjøring
 
-### 1. Backend
+### 1. Infrastruktur (valgfri)
+
+```bash
+# Start Keycloak + RabbitMQ via Docker Compose
+docker compose up -d
+```
+
+### 2. Backend
 
 ```bash
 cd ContactExtractor/src/ContactExtractor.Api
@@ -42,12 +74,12 @@ dotnet user-secrets set "Llm:ApiKey" "din-nøkkel-her"
 dotnet run
 ```
 
-Serveren starter på `http://localhost:5000`.  
+Serveren starter på `http://localhost:5000`.
 Swagger UI: `http://localhost:5000/swagger`
 
-Databasen (`contactextractor-dev.db`) opprettes og migreres automatisk ved første kjøring.
+Databasen (`contactextractor.db`) opprettes og migreres automatisk ved første kjøring.
 
-### 2. Frontend
+### 3. Frontend
 
 ```bash
 cd contact-extractor-ui
@@ -55,151 +87,100 @@ npm install
 npm run dev
 ```
 
-Frontend starter på `http://localhost:5173` og proxyer API-kall til backend.
+Frontend starter på `http://localhost:5173`.
 
-### 3. Tester
+## Konfigurasjon (appsettings.json)
+
+```json
+{
+  "UseRabbitMq": false,
+  "EnableAuth": false,
+  "Keycloak": {
+    "Authority": "http://localhost:8080/realms/contact-extractor",
+    "Audience": "contact-extractor-api"
+  },
+  "Llm": {
+    "Provider": "claude",
+    "ApiKey": "",
+    "Model": null,
+    "MaxInputCharacters": 50000
+  }
+}
+```
+
+- Sett `UseRabbitMq: true` for å bruke RabbitMQ i stedet for InMemory-transport
+- Sett `EnableAuth: true` for å aktivere Keycloak JWT-autentisering
+- Sett `Provider` til `claude`, `openai`, `ollama` eller `none`
+
+## Tester
 
 ```bash
 cd ContactExtractor
 dotnet test
 ```
 
-## AI-konfigurasjon
-
-AI-provider konfigureres i `appsettings.json` (eller via user-secrets i utvikling):
-
-### Claude (Anthropic)
-
-```json
-{
-  "Llm": {
-    "Provider": "claude",
-    "ApiKey": "",
-    "Model": "claude-sonnet-4-5"
-  }
-}
-```
-
-```bash
-dotnet user-secrets set "Llm:ApiKey" "sk-ant-..."
-```
-
-### OpenAI
-
-```json
-{
-  "Llm": {
-    "Provider": "openai",
-    "ApiKey": "",
-    "Model": "gpt-4o"
-  }
-}
-```
-
-```bash
-dotnet user-secrets set "Llm:ApiKey" "sk-..."
-```
-
-### Ollama (lokal kjøring)
-
-```json
-{
-  "Llm": {
-    "Provider": "ollama",
-    "Model": "llama3.1",
-    "BaseUrl": "http://localhost:11434"
-  }
-}
-```
-
-### Deaktiver AI
-
-```json
-{
-  "Llm": {
-    "Provider": "none"
-  }
-}
-```
-
-**Ingen kodeendring er nødvendig for å bytte provider** — kun konfigurasjonsfilen.
-
-## AI-strategi
-
-For strukturerte filer (CSV, Excel, VCF) brukes kun regex og kolonnegjenkjenning.
-
-For ustrukturerte filer (PDF, Word, TXT) brukes en tostegs-tilnærming:
-
-1. Ekstraher råtekst fra filen
-2. Forsøk regex-basert ekstraksjon (e-post, telefon, navn-mønstre)
-3. Hvis regex finner < 2 kontakter eller konfidensen er lav → send teksten til LLM
-4. Merge og dedupliser resultater fra regex + LLM
-
-Kontakter merkes med `ExtractionSource = "regex"` eller `"ai"`.
-
-## Prosjektstruktur
-
-```
-env-tui/
-├── ContactExtractor/               # .NET backend
-│   ├── ContactExtractor.sln
-│   ├── src/
-│   │   └── ContactExtractor.Api/
-│   │       ├── Program.cs          # Minimal API oppsett
-│   │       ├── Endpoints/          # Upload, Contact, Export, Settings
-│   │       ├── AI/                 # ILlmService, providers (Claude/OpenAI/Ollama)
-│   │       ├── Domain/             # Entities + Value Objects (DDD)
-│   │       ├── Infrastructure/     # EF Core DbContext + konfigurasjoner
-│   │       ├── Services/           # IFileParser + alle parsere
-│   │       └── Contracts/          # DTOs (records)
-│   └── tests/
-│       └── ContactExtractor.Tests/ # xUnit-tester (parsing, regex, prompt, LLM-response)
-│
-└── contact-extractor-ui/           # React frontend
-    └── src/
-        ├── components/             # UI-komponenter inkl. AiBadge og ConfidenceBar
-        ├── hooks/                  # useFileUpload, useContacts
-        ├── services/               # API-klient
-        └── types/                  # TypeScript-typer
-```
+Inkluderer tester for:
+- E-post og telefonnummer-validering
+- Kolonnegjenkjenning (norsk + engelsk)
+- Regex-ekstraksjon fra tekst
+- VCard-parsing
+- LLM-prompt-bygging og JSON-deserialisering
+- Duplikatdeteksjon (Jaro-Winkler, eksakt match)
+- Webhook HMAC-signatur
 
 ## API-endepunkter
 
+### Upload
 | Metode | URL | Beskrivelse |
 |--------|-----|-------------|
-| `POST` | `/api/upload` | Last opp fil og ekstraher kontakter |
-| `POST` | `/api/upload/preview` | Forhåndsvisning + kolonne-mapping-forslag |
-| `GET`  | `/api/upload/supported-formats` | Støttede filformater |
-| `GET`  | `/api/contacts` | Hent alle opplastingssesjoner |
-| `GET`  | `/api/contacts/{sessionId}` | Hent kontakter for en sesjon |
-| `PUT`  | `/api/contacts/{sessionId}/contacts/{contactId}` | Oppdater en kontakt |
-| `DELETE` | `/api/contacts/{sessionId}` | Slett sesjon og alle kontakter |
-| `POST` | `/api/export/{sessionId}/csv` | Eksporter til CSV |
-| `POST` | `/api/export/{sessionId}/excel` | Eksporter til Excel |
-| `GET`  | `/api/settings/llm` | Vis aktiv AI-provider (uten API-nøkkel) |
+| POST | `/api/upload` | Last opp fil (asynkron, returnerer 202) |
+| GET | `/api/upload/{id}/stream` | SSE-stream for fremdrift |
+| GET | `/api/upload/{id}/result` | Polling-fallback (200 når ferdig, 202 pågår) |
+| POST | `/api/upload/preview` | Forhåndsvisning og kolonne-mapping |
+| GET | `/api/upload/supported-formats` | Støttede filformater |
 
-## EF Core-migreringer
+### Kontakter
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/contacts` | Alle sesjoner |
+| GET | `/api/contacts/{id}` | Kontakter for sesjon |
+| PUT | `/api/contacts/{sessionId}/contacts/{contactId}` | Oppdater kontakt |
+| DELETE | `/api/contacts/{id}` | Slett sesjon |
 
-```bash
-cd ContactExtractor/src/ContactExtractor.Api
+### Tags (Fase 5)
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/tags` | Alle tags |
+| POST | `/api/tags` | Opprett tag |
+| PUT | `/api/tags/{id}` | Oppdater tag |
+| DELETE | `/api/tags/{id}` | Slett tag |
+| POST | `/api/tags/contacts/add` | Legg til tag på kontakter (bulk) |
+| POST | `/api/tags/contacts/remove` | Fjern tag fra kontakter (bulk) |
 
-# Opprett ny migrasjon
-dotnet ef migrations add <Navn>
+### Duplikater (Fase 5)
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/duplicates` | Alle uløste duplikatgrupper |
+| POST | `/api/duplicates/{id}/merge` | Slå sammen kontakter |
+| POST | `/api/duplicates/{id}/dismiss` | Avvis som ikke-duplikater |
 
-# Kjør migreringer manuelt
-dotnet ef database update
-```
+### Dashboard + Audit (Fase 6)
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/dashboard` | Statistikk |
+| GET | `/api/dashboard/audit` | Audit-logg for bruker |
 
-Migreringer kjøres automatisk ved oppstart i Development-miljøet.
+### Webhooks (Fase 6)
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/webhooks` | Alle webhooks |
+| POST | `/api/webhooks` | Registrer webhook |
+| DELETE | `/api/webhooks/{id}` | Slett webhook |
+| POST | `/api/webhooks/{id}/test` | Send test-payload |
 
-## Miljøvariabler
-
-| Nøkkel | Beskrivelse |
-|--------|-------------|
-| `ConnectionStrings:Default` | SQLite connection string |
-| `Llm:Provider` | AI-provider: `claude`, `openai`, `ollama`, `none` |
-| `Llm:ApiKey` | API-nøkkel (bruk user-secrets i utvikling) |
-| `Llm:Model` | Valgfri model-override |
-| `Llm:BaseUrl` | Base URL for Ollama |
-| `Llm:MaxInputCharacters` | Maks tegn sendt til LLM (standard: 50 000) |
-| `AllowedOrigins` | CORS-tillatte origins (standard: `http://localhost:5173`) |
+### Integrasjoner (Fase 6)
+| Metode | URL | Beskrivelse |
+|--------|-----|-------------|
+| GET | `/api/integrations` | Tilgjengelige CRM-integrasjoner |
+| POST | `/api/integrations/hubspot/export/{id}` | Eksporter til HubSpot |
+| POST | `/api/integrations/google/export/{id}` | Eksporter til Google Contacts |

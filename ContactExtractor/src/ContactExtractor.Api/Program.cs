@@ -1,8 +1,10 @@
 using ContactExtractor.Api.AI;
+using ContactExtractor.Api.Auth;
 using ContactExtractor.Api.Endpoints;
 using ContactExtractor.Api.Infrastructure;
 using ContactExtractor.Api.Messaging.Consumers;
 using ContactExtractor.Api.Services;
+using ContactExtractor.Api.Services.Integrations;
 using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,14 +26,42 @@ builder.Services.Scan(scan => scan
 
 builder.Services.AddScoped<FileParserFactory>();
 builder.Services.AddScoped<ContactExtractionService>();
+builder.Services.AddScoped<DuplicateDetectionService>();
+builder.Services.AddScoped<ContactValidationService>();
+builder.Services.AddScoped<NameNormalizationService>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<WebhookService>();
+
+// CRM-integrasjoner
+builder.Services.AddHttpClient<HubSpotExporter>();
+builder.Services.AddHttpClient<GoogleContactsExporter>();
+
+// Named HttpClient for webhook delivery
+builder.Services.AddHttpClient("webhook");
 
 // SSE-bro mellom consumer og klient (singleton – holder channels per sesjon)
 builder.Services.AddSingleton<SseProgressService>();
+
+// Keycloak JWT Bearer (valgfri i utvikling)
+if (builder.Configuration.GetValue<bool>("EnableAuth"))
+{
+    builder.Services.AddKeycloakAuth(builder.Configuration);
+}
+else
+{
+    // Fallback – ingen autentisering (utvikling)
+    builder.Services.AddAuthentication();
+    builder.Services.AddAuthorization();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<CurrentUserService>();
+}
 
 // MassTransit – InMemory for utvikling, RabbitMQ for produksjon
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ExtractionConsumer>();
+    x.AddConsumer<DuplicateScanConsumer>();
+    x.AddConsumer<WebhookDeliveryConsumer>();
 
     if (builder.Configuration.GetValue<bool>("UseRabbitMq"))
     {
@@ -42,6 +72,16 @@ builder.Services.AddMassTransit(x =>
             {
                 e.PrefetchCount = 3;  // Maks 3 samtidige AI-ekstraksjoner
                 e.ConfigureConsumer<ExtractionConsumer>(context);
+            });
+            cfg.ReceiveEndpoint("duplicate-scan-queue", e =>
+            {
+                e.PrefetchCount = 5;
+                e.ConfigureConsumer<DuplicateScanConsumer>(context);
+            });
+            cfg.ReceiveEndpoint("webhook-delivery-queue", e =>
+            {
+                e.PrefetchCount = 10;
+                e.ConfigureConsumer<WebhookDeliveryConsumer>(context);
             });
         });
     }
@@ -66,6 +106,14 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for å ekstrahere kontaktinformasjon fra ulike filformater. " +
                       "Støtter AI-drevet parsing (Claude, OpenAI, Ollama) for ustrukturerte filer."
     });
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        In   = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
 });
 
 builder.Services.AddCors(options =>
@@ -83,6 +131,8 @@ builder.WebHost.ConfigureKestrel(o =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
@@ -100,6 +150,11 @@ app.MapUploadEndpoints();
 app.MapContactEndpoints();
 app.MapExportEndpoints();
 app.MapSettingsEndpoints();
+app.MapTagEndpoints();
+app.MapDuplicateEndpoints();
+app.MapDashboardEndpoints();
+app.MapWebhookEndpoints();
+app.MapIntegrationEndpoints();
 
 app.MapGet("/health", () => TypedResults.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
    .WithTags("Health");

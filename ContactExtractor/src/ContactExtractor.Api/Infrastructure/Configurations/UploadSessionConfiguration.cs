@@ -16,6 +16,7 @@ public class UploadSessionConfiguration : IEntityTypeConfiguration<UploadSession
             .HasDefaultValue(ExtractionStatus.Pending)
             .IsRequired();
         builder.Property(u => u.ErrorMessage).HasMaxLength(1000);
+        builder.Property(u => u.UserId).HasMaxLength(128);
 
         builder.HasMany(u => u.Contacts)
             .WithOne()

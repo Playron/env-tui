@@ -19,5 +19,15 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(c => c.Address).HasMaxLength(500);
         builder.Property(c => c.Confidence).HasColumnType("REAL");
         builder.Property(c => c.ExtractionSource).HasMaxLength(10).HasDefaultValue("regex");
+        builder.Property(c => c.IsValidEmail).HasDefaultValue(false);
+        builder.Property(c => c.IsValidPhone).HasDefaultValue(false);
+        builder.Property(c => c.DuplicateGroupId);
+
+        builder.HasMany(c => c.Tags)
+            .WithMany(t => t.Contacts)
+            .UsingEntity(j => j.ToTable("ContactTags"));
+
+        builder.Navigation(c => c.Tags)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

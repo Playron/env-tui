@@ -17,6 +17,46 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
 
+            modelBuilder.Entity("ContactExtractor.Api.Domain.AuditLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AuditLog");
+                });
+
             modelBuilder.Entity("ContactExtractor.Api.Domain.Contact", b =>
                 {
                     b.Property<Guid>("Id")
@@ -29,6 +69,9 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
 
                     b.Property<double>("Confidence")
                         .HasColumnType("REAL");
+
+                    b.Property<Guid?>("DuplicateGroupId")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
                         .HasMaxLength(320)
@@ -48,6 +91,14 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
                     b.Property<string>("FullName")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsValidEmail")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsValidPhone")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("LastName")
                         .HasMaxLength(100)
@@ -76,9 +127,65 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DuplicateGroupId");
+
                     b.HasIndex("UploadSessionId");
 
                     b.ToTable("Contacts");
+                });
+
+            modelBuilder.Entity("ContactExtractor.Api.Domain.DuplicateGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Resolved")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<double>("Similarity")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DuplicateGroups");
+                });
+
+            modelBuilder.Entity("ContactExtractor.Api.Domain.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("ContactExtractor.Api.Domain.UploadSession", b =>
@@ -115,13 +222,76 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("UploadSessions");
                 });
 
+            modelBuilder.Entity("ContactExtractor.Api.Domain.WebhookConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Secret")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Webhooks");
+                });
+
+            modelBuilder.Entity("ContactTagsJoin", b =>
+                {
+                    b.Property<Guid>("ContactsId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TagsId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ContactsId", "TagsId");
+
+                    b.HasIndex("TagsId");
+
+                    b.ToTable("ContactTags");
+                });
+
             modelBuilder.Entity("ContactExtractor.Api.Domain.Contact", b =>
                 {
+                    b.HasOne("ContactExtractor.Api.Domain.DuplicateGroup", null)
+                        .WithMany("Contacts")
+                        .HasForeignKey("DuplicateGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ContactExtractor.Api.Domain.UploadSession", null)
                         .WithMany("Contacts")
                         .HasForeignKey("UploadSessionId")
@@ -129,7 +299,32 @@ namespace ContactExtractor.Api.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContactTagsJoin", b =>
+                {
+                    b.HasOne("ContactExtractor.Api.Domain.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ContactExtractor.Api.Domain.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContactExtractor.Api.Domain.DuplicateGroup", b =>
+                {
+                    b.Navigation("Contacts");
+                });
+
             modelBuilder.Entity("ContactExtractor.Api.Domain.UploadSession", b =>
+                {
+                    b.Navigation("Contacts");
+                });
+
+            modelBuilder.Entity("ContactExtractor.Api.Domain.Tag", b =>
                 {
                     b.Navigation("Contacts");
                 });

@@ -8,6 +8,7 @@ public class UploadSession
     public int TotalRowsProcessed { get; private set; }
     public bool UsedAi { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    public string? UserId { get; private set; }  // Keycloak subject ID (Fase 4)
 
     private readonly List<Contact> _contacts = [];
     public IReadOnlyCollection<Contact> Contacts => _contacts.AsReadOnly();
@@ -17,13 +18,14 @@ public class UploadSession
 
     private UploadSession() { } // EF Core
 
-    public UploadSession(string fileName, string fileType, int rowsProcessed, bool usedAi = false)
+    public UploadSession(string fileName, string fileType, int rowsProcessed, bool usedAi = false, string? userId = null)
     {
         Id = Guid.CreateVersion7();
         OriginalFileName = fileName;
         FileType = fileType;
         TotalRowsProcessed = rowsProcessed;
         UsedAi = usedAi;
+        UserId = userId;
     }
 
     public void AddContacts(IEnumerable<Contact> contacts) => _contacts.AddRange(contacts);

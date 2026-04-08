@@ -22,6 +22,21 @@ public static class ExportEndpoints
             .Produces<FileContentHttpResult>(200)
             .Produces(404)
             .WithSummary("Eksporter kontakter til Excel");
+
+        group.MapPost("/{sessionId:guid}/vcard", ExportVCard)
+            .Produces<FileContentHttpResult>(200)
+            .Produces(404)
+            .WithSummary("Eksporter kontakter til vCard (.vcf)");
+
+        group.MapPost("/{sessionId:guid}/google", ExportGoogleCsv)
+            .Produces<FileContentHttpResult>(200)
+            .Produces(404)
+            .WithSummary("Eksporter kontakter til Google Contacts CSV-format");
+
+        group.MapPost("/{sessionId:guid}/outlook", ExportOutlookCsv)
+            .Produces<FileContentHttpResult>(200)
+            .Produces(404)
+            .WithSummary("Eksporter kontakter til Outlook-kompatibel CSV");
     }
 
     private static async Task<Results<FileContentHttpResult, NotFound>> ExportCsv(
@@ -130,5 +145,128 @@ public static class ExportEndpoints
         return TypedResults.File(bytes,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             fileName);
+    }
+
+    // ── POST /api/export/{sessionId}/vcard ────────────────────────────────────
+    private static async Task<Results<FileContentHttpResult, NotFound>> ExportVCard(
+        Guid sessionId,
+        AppDbContext db,
+        CancellationToken ct)
+    {
+        var session = await db.UploadSessions
+            .AsNoTracking()
+            .Include(s => s.Contacts)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+        if (session is null) return TypedResults.NotFound();
+
+        var sb = new StringBuilder();
+        foreach (var c in session.Contacts)
+        {
+            sb.AppendLine("BEGIN:VCARD");
+            sb.AppendLine("VERSION:3.0");
+            var fn = c.FullName ?? $"{c.FirstName} {c.LastName}".Trim();
+            if (!string.IsNullOrWhiteSpace(fn))
+                sb.AppendLine($"FN:{fn}");
+            if (!string.IsNullOrWhiteSpace(c.FirstName) || !string.IsNullOrWhiteSpace(c.LastName))
+                sb.AppendLine($"N:{c.LastName ?? ""};{c.FirstName ?? ""};;;");
+            if (!string.IsNullOrWhiteSpace(c.Email))
+                sb.AppendLine($"EMAIL:{c.Email}");
+            if (!string.IsNullOrWhiteSpace(c.Phone))
+                sb.AppendLine($"TEL:{c.Phone}");
+            if (!string.IsNullOrWhiteSpace(c.Organization))
+                sb.AppendLine($"ORG:{c.Organization}");
+            if (!string.IsNullOrWhiteSpace(c.Title))
+                sb.AppendLine($"TITLE:{c.Title}");
+            if (!string.IsNullOrWhiteSpace(c.Address))
+                sb.AppendLine($"ADR:;;{c.Address};;;;");
+            sb.AppendLine("END:VCARD");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        return TypedResults.File(bytes, "text/vcard", $"kontakter_{session.Id:N}.vcf");
+    }
+
+    // ── POST /api/export/{sessionId}/google ───────────────────────────────────
+    private static async Task<Results<FileContentHttpResult, NotFound>> ExportGoogleCsv(
+        Guid sessionId,
+        AppDbContext db,
+        CancellationToken ct)
+    {
+        var session = await db.UploadSessions
+            .AsNoTracking()
+            .Include(s => s.Contacts)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+        if (session is null) return TypedResults.NotFound();
+
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true };
+        using var ms = new MemoryStream();
+        await using var writer = new StreamWriter(ms, Encoding.UTF8, leaveOpen: true);
+        await using var csv = new CsvWriter(writer, config);
+
+        // Google Contacts CSV-format
+        string[] headers = ["Name", "Given Name", "Family Name", "E-mail 1 - Value",
+                            "Phone 1 - Value", "Organization 1 - Name", "Organization 1 - Title",
+                            "Address 1 - Street"];
+        foreach (var h in headers) csv.WriteField(h);
+        await csv.NextRecordAsync();
+
+        foreach (var c in session.Contacts)
+        {
+            csv.WriteField(c.FullName ?? $"{c.FirstName} {c.LastName}".Trim());
+            csv.WriteField(c.FirstName);
+            csv.WriteField(c.LastName);
+            csv.WriteField(c.Email);
+            csv.WriteField(c.Phone);
+            csv.WriteField(c.Organization);
+            csv.WriteField(c.Title);
+            csv.WriteField(c.Address);
+            await csv.NextRecordAsync();
+        }
+
+        await writer.FlushAsync(ct);
+        return TypedResults.File(ms.ToArray(), "text/csv", $"google_kontakter_{session.Id:N}.csv");
+    }
+
+    // ── POST /api/export/{sessionId}/outlook ──────────────────────────────────
+    private static async Task<Results<FileContentHttpResult, NotFound>> ExportOutlookCsv(
+        Guid sessionId,
+        AppDbContext db,
+        CancellationToken ct)
+    {
+        var session = await db.UploadSessions
+            .AsNoTracking()
+            .Include(s => s.Contacts)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+        if (session is null) return TypedResults.NotFound();
+
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true };
+        using var ms = new MemoryStream();
+        await using var writer = new StreamWriter(ms, Encoding.UTF8, leaveOpen: true);
+        await using var csv = new CsvWriter(writer, config);
+
+        // Outlook CSV-format
+        string[] headers = ["First Name", "Last Name", "Display Name", "E-mail Address",
+                            "Business Phone", "Company", "Job Title", "Business Street"];
+        foreach (var h in headers) csv.WriteField(h);
+        await csv.NextRecordAsync();
+
+        foreach (var c in session.Contacts)
+        {
+            csv.WriteField(c.FirstName);
+            csv.WriteField(c.LastName);
+            csv.WriteField(c.FullName ?? $"{c.FirstName} {c.LastName}".Trim());
+            csv.WriteField(c.Email);
+            csv.WriteField(c.Phone);
+            csv.WriteField(c.Organization);
+            csv.WriteField(c.Title);
+            csv.WriteField(c.Address);
+            await csv.NextRecordAsync();
+        }
+
+        await writer.FlushAsync(ct);
+        return TypedResults.File(ms.ToArray(), "text/csv", $"outlook_kontakter_{session.Id:N}.csv");
     }
 }

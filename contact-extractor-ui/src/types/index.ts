@@ -1,3 +1,9 @@
+export interface TagDto {
+  id: string
+  name: string
+  color?: string
+}
+
 export interface ContactDto {
   id: string
   firstName?: string
@@ -10,6 +16,9 @@ export interface ContactDto {
   address?: string
   confidence: number
   extractionSource: 'regex' | 'ai' | 'manual'
+  isValidEmail: boolean
+  isValidPhone: boolean
+  tags: TagDto[]
 }
 
 export interface ExtractionResultDto {
@@ -101,4 +110,45 @@ export const FIELD_MAPPING_LABELS: Record<string, string> = {
   Title:        'Stilling',
   Address:      'Adresse',
   '':           '(Ikke bruk)',
+}
+
+// Phase 5 - Duplicates
+export interface DuplicateGroupDto {
+  id: string
+  similarity: number
+  resolved: boolean
+  contacts: ContactDto[]
+}
+
+// Phase 6 - Dashboard
+export interface DashboardDto {
+  totalSessions: number
+  totalContacts: number
+  sessionsThisMonth: number
+  contactsThisMonth: number
+  aiExtractions: number
+  duplicatesFound: number
+  duplicatesResolved: number
+  byFileType: Array<{ fileType: string; count: number }>
+  activityLast30Days: Array<{ date: string; uploads: number; contacts: number }>
+}
+
+// Phase 6 - Audit log
+export interface AuditLogDto {
+  id: string
+  userId: string
+  action: string
+  entityType: string
+  entityId?: string
+  details?: string
+  timestamp: string
+}
+
+// Phase 6 - Webhooks
+export interface WebhookConfigDto {
+  id: string
+  url: string
+  event: string
+  isActive: boolean
+  createdAt: string
 }
