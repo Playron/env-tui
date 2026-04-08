@@ -8,6 +8,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using OfficeOpenXml;
 using System.Text;
+using Xunit;
 
 namespace ContactExtractor.Tests;
 
