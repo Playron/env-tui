@@ -1,5 +1,3 @@
-using ContactExtractor.Api.AI;
-using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
 
 namespace ContactExtractor.Api.Services.Parsers;
@@ -53,7 +51,37 @@ public class PdfParser(
     {
         Stream pdf = stream.CanSeek ? stream : BufferStream(stream);
         using var doc = PdfDocument.Open(pdf);
-        return string.Join("\n", doc.GetPages().Select(p => p.Text));
+        var sb = new System.Text.StringBuilder();
+        foreach (var page in doc.GetPages())
+        {
+            // Group words by Y position to reconstruct lines
+            var words = page.GetWords().ToList();
+            if (words.Count == 0) continue;
+
+            var lines = new List<List<UglyToad.PdfPig.Content.Word>>();
+            var currentLine = new List<UglyToad.PdfPig.Content.Word> { words[0] };
+            for (var i = 1; i < words.Count; i++)
+            {
+                // Words on the same line have similar Y coordinates (within tolerance)
+                if (Math.Abs(words[i].BoundingBox.Bottom - currentLine[0].BoundingBox.Bottom) < 2)
+                {
+                    currentLine.Add(words[i]);
+                }
+                else
+                {
+                    lines.Add(currentLine);
+                    currentLine = [words[i]];
+                }
+            }
+            lines.Add(currentLine);
+
+            foreach (var line in lines)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append(string.Join(" ", line.Select(w => w.Text)));
+            }
+        }
+        return sb.ToString();
     }
 
     private static MemoryStream BufferStream(Stream source)

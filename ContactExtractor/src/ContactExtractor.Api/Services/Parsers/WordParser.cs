@@ -1,7 +1,5 @@
-using ContactExtractor.Api.AI;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using Microsoft.Extensions.Options;
 
 namespace ContactExtractor.Api.Services.Parsers;
 

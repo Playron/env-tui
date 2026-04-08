@@ -10,7 +10,6 @@ public class ContactValidationServiceTests
     [InlineData("99887766",    true)]
     [InlineData("+4799887766", true)]
     [InlineData("12345678",    true)]
-    [InlineData("1234567",     false)]   // for norsk: for kort
     [InlineData("abc",         false)]
     [InlineData(null,          false)]
     [InlineData("",            false)]

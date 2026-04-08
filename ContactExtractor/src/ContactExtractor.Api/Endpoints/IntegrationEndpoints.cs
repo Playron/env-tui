@@ -1,4 +1,3 @@
-using ContactExtractor.Api.Auth;
 using ContactExtractor.Api.Services.Integrations;
 
 namespace ContactExtractor.Api.Endpoints;

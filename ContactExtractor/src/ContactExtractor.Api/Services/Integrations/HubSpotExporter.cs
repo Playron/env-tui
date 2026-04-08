@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json;
-
 namespace ContactExtractor.Api.Services.Integrations;
 
 public class HubSpotExporter(HttpClient httpClient) : ICrmExporter

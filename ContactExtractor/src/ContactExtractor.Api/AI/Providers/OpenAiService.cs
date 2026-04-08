@@ -1,7 +1,5 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
 
 namespace ContactExtractor.Api.AI.Providers;
 

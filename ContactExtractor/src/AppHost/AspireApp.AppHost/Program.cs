@@ -32,8 +32,13 @@ var ollama = builder.AddOllama("ollama")
 
 var nuextract = ollama.AddModel("nuextract");
 
-// ── 5. API-prosjekt ───────────────────────────────────────────────
-var api = builder.AddProject<Projects.ContactExtractor_Api>("api")
+// ── 5. Database migrations ───────────────────────────────────────
+var migrations = builder.AddProject<Projects.ContactExtractor_MigrationService>("migrations")
+    .WithReference(contactDb)
+    .WaitFor(contactDb);
+
+// ── 6. API-prosjekt ───────────────────────────────────────────────
+var api = builder.AddProject<Projects.ContactExtractor_Api>("contactextractor-api")
     .WithReference(contactDb)
     .WithReference(rabbitmq)
     .WithReference(keycloak)
@@ -42,11 +47,12 @@ var api = builder.AddProject<Projects.ContactExtractor_Api>("api")
     .WaitFor(rabbitmq)
     .WaitFor(keycloak)
     .WaitFor(nuextract)
+    .WaitForCompletion(migrations)
     .WithEnvironment("Llm__Mode", "single")
     .WithEnvironment("Llm__Provider", "ollama");
 
-// ── 6. React Frontend ─────────────────────────────────────────────
-builder.AddNpmApp("frontend", "../../../contact-extractor-ui", "dev")
+// ── 7. React Frontend ─────────────────────────────────────────────
+builder.AddNpmApp("frontend", "../../../../contact-extractor-ui", "dev")
     .WithReference(api)
     .WithReference(keycloak)
     .WithHttpEndpoint(port: 5173, env: "PORT")

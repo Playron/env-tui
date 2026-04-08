@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/ContactExtractor.AppHost/ContactExtractor.AppHost.csproj"
+  }
+}

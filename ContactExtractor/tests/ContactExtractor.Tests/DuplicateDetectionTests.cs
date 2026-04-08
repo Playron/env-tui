@@ -1,4 +1,5 @@
 using ContactExtractor.Api.Domain;
+using ContactExtractor.Api.Domain.ValueObjects;
 using ContactExtractor.Api.Services;
 
 namespace ContactExtractor.Tests;
@@ -75,8 +76,8 @@ public class DuplicateDetectionTests
 
         var groups = _service.FindDuplicates(contacts);
 
-        groups.ShouldHaveCount(1);
-        groups[0].Indices.ShouldHaveCount(2);
+        groups.Count.ShouldBe(1);
+        groups[0].Indices.Count.ShouldBe(2);
     }
 
     [Fact]

@@ -1,7 +1,3 @@
-using ContactExtractor.Api.AI;
-using ContactExtractor.Api.Domain;
-using ContactExtractor.Api.Domain.ValueObjects;
-
 namespace ContactExtractor.Api.Services;
 
 public static class ContactMergeHelper

@@ -92,7 +92,7 @@ export function DuplicateResolver() {
               <div key={contact.id} className="border border-gray-200 rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-sm text-gray-900">
-                    {contact.fullName ?? `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim() || '(Ukjent)'}
+                    {contact.fullName ?? (`${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim() || '(Ukjent)')}
                   </p>
                   <ConfidenceBar value={contact.confidence} showLabel={false} />
                 </div>
