@@ -1,4 +1,5 @@
-using System.Text.Json;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
 using ContactExtractor.Api.Domain;
 using ContactExtractor.Api.Messaging.Messages;
 using ContactExtractor.Api.Services;
@@ -87,68 +88,45 @@ public static class UploadEndpoints
     }
 
     // ── GET /api/upload/{sessionId}/stream ───────────────────────────────────
-    // SSE-endepunkt. Korrekt implementasjon: skriver data: {json}\n\n manuelt.
+    // SSE-endepunkt. Bruker TypedResults.ServerSentEvents fra .NET 10 – håndterer
+    // headers, framing (data: ...\n\n) og flushing automatisk.
     // Håndterer sen tilkobling: lever terminal-event umiddelbart hvis allerede ferdig.
-    private static async Task HandleStream(
+    private static async Task<IResult> HandleStream(
         Guid sessionId,
         SseProgressService progressService,
         AppDbContext db,
-        HttpContext ctx,
         CancellationToken ct)
     {
-        ctx.Response.Headers.CacheControl = "no-cache";
-        ctx.Response.Headers.Connection = "keep-alive";
-        ctx.Response.ContentType = "text/event-stream";
-        await ctx.Response.Body.FlushAsync(ct);
+        if (progressService.Exists(sessionId))
+            return TypedResults.ServerSentEvents(progressService.StreamAsync(sessionId, ct));
 
-        var (reader, immediateEvent) = progressService.GetReader(sessionId);
+        // Sesjonen er ikke i minnet – sen klient, sjekk DB
+        var session = await db.UploadSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
 
-        // Sesjonen er allerede fullført (channel er fjernet eller fullført)
-        if (reader is null)
+        if (session is null) return TypedResults.NotFound();
+
+        if (session.Status is ExtractionStatus.Completed or ExtractionStatus.Failed)
         {
-            // Sjekk DB for terminal-event basert på status
-            var session = await db.UploadSessions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
-
-            if (session is null) return;
-
-            if (session.Status is ExtractionStatus.Completed or ExtractionStatus.Failed)
-            {
-                var stage = session.Status == ExtractionStatus.Completed ? "done" : "failed";
-                var msg = session.Status == ExtractionStatus.Completed
-                    ? $"Ferdig! {session.TotalRowsProcessed} kontakter ekstrahert."
-                    : $"Feil: {session.ErrorMessage}";
-                await WriteSseEventAsync(ctx, new SseProgressEvent(
-                    sessionId, stage, msg, session.TotalRowsProcessed, null), ct);
-            }
-            return;
+            var stage = session.Status == ExtractionStatus.Completed ? "done" : "failed";
+            var msg = session.Status == ExtractionStatus.Completed
+                ? $"Ferdig! {session.TotalRowsProcessed} kontakter ekstrahert."
+                : $"Feil: {session.ErrorMessage}";
+            var final = new SseProgressEvent(sessionId, stage, msg, session.TotalRowsProcessed, null);
+            return TypedResults.ServerSentEvents(SingleEventAsync(final));
         }
 
-        // Sesjonen ble fullført mellom GetReader-kallet og nå (race condition)
-        if (immediateEvent is not null)
-        {
-            await WriteSseEventAsync(ctx, immediateEvent, ct);
-            return;
-        }
-
-        // Normal path: les fra aktiv channel
-        await foreach (var evt in reader.ReadAllAsync(ct))
-        {
-            await WriteSseEventAsync(ctx, evt, ct);
-            if (evt.Stage is "done" or "failed") break;
-        }
+        return TypedResults.NotFound();
     }
 
-    private static async Task WriteSseEventAsync(
-        HttpContext ctx, SseProgressEvent evt, CancellationToken ct)
+    private static async IAsyncEnumerable<SseItem<SseProgressEvent>> SingleEventAsync(
+        SseProgressEvent evt,
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(evt, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-        await ctx.Response.WriteAsync($"data: {json}\n\n", ct);
-        await ctx.Response.Body.FlushAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        yield return new SseItem<SseProgressEvent>(evt) { EventType = evt.Stage };
+        await Task.CompletedTask;
     }
 
     // ── GET /api/upload/{sessionId}/result ───────────────────────────────────
