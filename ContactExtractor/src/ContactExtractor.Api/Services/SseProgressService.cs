@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 namespace ContactExtractor.Api.Services;
@@ -44,19 +46,34 @@ public sealed class SseProgressService
         _sessions[sessionId] = new SessionState(state.Channel, finalEvent);
     }
 
+    /// <summary>Returnerer true hvis sesjonen finnes i minnet (aktiv eller nylig fullført).</summary>
+    public bool Exists(Guid sessionId) => _sessions.ContainsKey(sessionId);
+
     /// <summary>
-    /// Returnerer reader for SSE-endepunktet.
-    /// - reader == null: sesjonen finnes ikke (ukjent sessionId)
-    /// - immediateEvent != null: sesjonen er allerede fullført – lever event umiddelbart
-    /// - reader != null og immediateEvent == null: koble til aktiv strøm
+    /// Strømmer SSE-hendelser for en sesjon som <see cref="IAsyncEnumerable{T}"/>.
+    /// Brukes med <c>TypedResults.ServerSentEvents(...)</c> i .NET 10.
+    /// - Sesjonen finnes ikke: ingen events (yield break)
+    /// - Allerede fullført: leverer terminal-event umiddelbart
+    /// - Aktiv: strømmer events fra channel til "done" eller "failed"
     /// </summary>
-    public (ChannelReader<SseProgressEvent>? Reader, SseProgressEvent? ImmediateEvent)
-        GetReader(Guid sessionId)
+    public async IAsyncEnumerable<SseItem<SseProgressEvent>> StreamAsync(
+        Guid sessionId,
+        [EnumeratorCancellation] CancellationToken ct)
     {
         if (!_sessions.TryGetValue(sessionId, out var state))
-            return (null, null);
+            yield break;
 
-        return (state.Channel.Reader, state.FinalEvent);
+        if (state.FinalEvent is not null)
+        {
+            yield return Wrap(state.FinalEvent);
+            yield break;
+        }
+
+        await foreach (var evt in state.Channel.Reader.ReadAllAsync(ct))
+        {
+            yield return Wrap(evt);
+            if (evt.Stage is "done" or "failed") break;
+        }
     }
 
     /// <summary>
@@ -64,6 +81,9 @@ public sealed class SseProgressService
     /// slik at eventuelle forsinkede tilkoblinger fortsatt får FinalEvent.
     /// </summary>
     public void Remove(Guid sessionId) => _sessions.TryRemove(sessionId, out _);
+
+    private static SseItem<SseProgressEvent> Wrap(SseProgressEvent evt) =>
+        new(evt) { EventType = evt.Stage };
 }
 
 public record SseProgressEvent(
