@@ -47,4 +47,8 @@ internal class NoOpLlmService : ILlmService
     public Task<LlmExtractionResult> ExtractContactsAsync(
         string rawText, string? fileContext, CancellationToken ct) =>
         Task.FromResult(new LlmExtractionResult([], "AI er ikke konfigurert.", 0));
+
+    public Task<Dictionary<string, NormalizedName>> NormalizeNamesAsync(
+        List<string> rawNames, CancellationToken ct) =>
+        Task.FromResult(new Dictionary<string, NormalizedName>());
 }

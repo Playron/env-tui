@@ -11,7 +11,10 @@ public record ContactDto(
     string? Title,
     string? Address,
     double Confidence,
-    string ExtractionSource);   // "regex" | "ai" | "manual"
+    string ExtractionSource,    // "regex" | "ai" | "manual"
+    bool IsValidEmail,
+    bool IsValidPhone,
+    List<TagDto> Tags);
 
 public record ContactUpdateDto(
     string? FirstName,

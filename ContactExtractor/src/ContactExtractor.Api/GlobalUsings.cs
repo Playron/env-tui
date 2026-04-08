@@ -1,4 +1,5 @@
 global using ContactExtractor.Api.AI;
+global using ContactExtractor.Api.Auth;
 global using ContactExtractor.Api.Contracts;
 global using ContactExtractor.Api.Domain;
 global using ContactExtractor.Api.Domain.ValueObjects;

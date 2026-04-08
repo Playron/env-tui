@@ -16,6 +16,12 @@ public class Contact
     public string? Address { get; set; }
     public double Confidence { get; set; }
     public string ExtractionSource { get; set; } = "regex"; // "regex" | "ai" | "manual"
+    public bool IsValidEmail { get; set; }                   // Fase 5
+    public bool IsValidPhone { get; set; }                   // Fase 5
+    public Guid? DuplicateGroupId { get; set; }              // Fase 5
+
+    private readonly List<Tag> _tags = [];                   // Fase 5
+    public IReadOnlyCollection<Tag> Tags => _tags.AsReadOnly();
 
     private Contact() { } // EF Core
 
@@ -33,6 +39,18 @@ public class Contact
         PhoneCountryCode = phone?.CountryCode;
     }
 
+    public void AddTag(Tag tag)
+    {
+        if (!_tags.Any(t => t.Id == tag.Id))
+            _tags.Add(tag);
+    }
+
+    public void RemoveTag(Guid tagId)
+    {
+        var tag = _tags.FirstOrDefault(t => t.Id == tagId);
+        if (tag is not null) _tags.Remove(tag);
+    }
+
     public ContactDto ToDto() => new(
         Id,
         FirstName,
@@ -44,7 +62,10 @@ public class Contact
         Title,
         Address,
         Confidence,
-        ExtractionSource);
+        ExtractionSource,
+        IsValidEmail,
+        IsValidPhone,
+        _tags.Select(t => new TagDto(t.Id, t.Name, t.Color)).ToList());
 
     private string? BuildFullName()
     {
