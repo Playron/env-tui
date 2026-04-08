@@ -106,11 +106,11 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for å ekstrahere kontaktinformasjon fra ulike filformater. " +
                       "Støtter AI-drevet parsing (Claude, OpenAI, Ollama) for ustrukturerte filer."
     });
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
     {
-        In   = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In   = Microsoft.OpenApi.ParameterLocation.Header,
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT"
     });

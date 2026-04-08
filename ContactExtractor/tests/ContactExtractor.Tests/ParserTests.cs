@@ -47,7 +47,7 @@ public class ExcelParserTests
     /// Creates an in-memory .xlsx stream via EPPlus.
     private static MemoryStream CreateXlsxStream(Action<ExcelWorksheet> configure)
     {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        ExcelPackage.License.SetNonCommercialPersonal("ContactExtractor");
         using var pkg = new ExcelPackage();
         var sheet = pkg.Workbook.Worksheets.Add("Sheet1");
         configure(sheet);

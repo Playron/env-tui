@@ -83,7 +83,7 @@ public sealed class SseProgressService
     public void Remove(Guid sessionId) => _sessions.TryRemove(sessionId, out _);
 
     private static SseItem<SseProgressEvent> Wrap(SseProgressEvent evt) =>
-        new(evt) { EventType = evt.Stage };
+        new(evt, evt.Stage);
 }
 
 public record SseProgressEvent(

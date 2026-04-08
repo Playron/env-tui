@@ -97,7 +97,7 @@ public static class ExportEndpoints
         AppDbContext db,
         CancellationToken ct)
     {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        ExcelPackage.License.SetNonCommercialPersonal("ContactExtractor");
 
         var session = await db.UploadSessions
             .AsNoTracking()
