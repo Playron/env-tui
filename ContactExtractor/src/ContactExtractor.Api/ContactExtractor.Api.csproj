@@ -9,6 +9,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Aspire service defaults -->
+    <ProjectReference Include="..\ContactExtractor.ServiceDefaults\ContactExtractor.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Aspire integrations -->
+    <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.4.1" />
+    <PackageReference Include="Aspire.RabbitMQ.Client" Version="9.4.1" />
+    <PackageReference Include="Aspire.Keycloak.Authentication" Version="9.4.1" />
+    <PackageReference Include="CommunityToolkit.Aspire.OllamaSharp" Version="9.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Existing packages -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <PrivateAssets>all</PrivateAssets>
