@@ -6,13 +6,29 @@ using ContactExtractor.Api.Messaging.Consumers;
 using ContactExtractor.Api.Services;
 using ContactExtractor.Api.Services.Integrations;
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// EF Core med SQLite
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default")
-        ?? "Data Source=contactextractor.db"));
+// ── Aspire ServiceDefaults (telemetri, health checks, service discovery) ──
+builder.AddServiceDefaults();
+
+// ── Database ──────────────────────────────────────────────────────
+// Aspire injiserer SQL Server connection string via nøkkelen "contactextractor"
+// Fallback til SQLite for lokal utvikling uten Aspire
+var aspireDbConnection = builder.Configuration.GetConnectionString("contactextractor");
+if (!string.IsNullOrEmpty(aspireDbConnection))
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(aspireDbConnection));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(builder.Configuration.GetConnectionString("Default")
+            ?? "Data Source=contactextractor.db"));
+}
 
 // AI-service – velger provider basert på config (claude / openai / ollama / none)
 builder.Services.AddLlmService(builder.Configuration);
@@ -42,10 +58,42 @@ builder.Services.AddHttpClient("webhook");
 // SSE-bro mellom consumer og klient (singleton – holder channels per sesjon)
 builder.Services.AddSingleton<SseProgressService>();
 
-// Keycloak JWT Bearer (valgfri i utvikling)
-if (builder.Configuration.GetValue<bool>("EnableAuth"))
+// ── Keycloak auth ─────────────────────────────────────────────────
+// Aspire injiserer Keycloak authority URL via service discovery
+var keycloakConnectionString = builder.Configuration.GetConnectionString("keycloak");
+if (!string.IsNullOrEmpty(keycloakConnectionString) || builder.Configuration.GetValue<bool>("EnableAuth"))
 {
-    builder.Services.AddKeycloakAuth(builder.Configuration);
+    if (!string.IsNullOrEmpty(keycloakConnectionString))
+    {
+        // Aspire-modus: bruk Keycloak JWT Bearer med service discovery
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = $"{keycloakConnectionString}/realms/contact-extractor";
+                options.Audience = "contact-extractor-api";
+                options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    NameClaimType = "preferred_username",
+                    RoleClaimType = "realm_access.roles"
+                };
+            });
+
+        builder.Services.AddAuthorizationBuilder()
+            .AddPolicy("AdminOnly", p => p.RequireRole("admin"))
+            .AddPolicy("Authenticated", p => p.RequireAuthenticatedUser());
+
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<CurrentUserService>();
+    }
+    else
+    {
+        // Manuell Keycloak-konfigurasjon (uten Aspire)
+        builder.Services.AddKeycloakAuth(builder.Configuration);
+    }
 }
 else
 {
@@ -56,21 +104,27 @@ else
     builder.Services.AddScoped<CurrentUserService>();
 }
 
-// MassTransit – InMemory for utvikling, RabbitMQ for produksjon
+// ── MassTransit – RabbitMQ ────────────────────────────────────────
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ExtractionConsumer>();
     x.AddConsumer<DuplicateScanConsumer>();
     x.AddConsumer<WebhookDeliveryConsumer>();
 
-    if (builder.Configuration.GetValue<bool>("UseRabbitMq"))
+    // Aspire injiserer ConnectionStrings__rabbitmq automatisk
+    var rabbitConnection = builder.Configuration.GetConnectionString("rabbitmq");
+    if (!string.IsNullOrEmpty(rabbitConnection) || builder.Configuration.GetValue<bool>("UseRabbitMq"))
     {
         x.UsingRabbitMq((context, cfg) =>
         {
-            cfg.Host(builder.Configuration.GetConnectionString("RabbitMq") ?? "localhost");
+            var connStr = rabbitConnection
+                ?? builder.Configuration.GetConnectionString("RabbitMq")
+                ?? "amqp://guest:guest@localhost:5672";
+            cfg.Host(new Uri(connStr));
+
             cfg.ReceiveEndpoint("extraction-queue", e =>
             {
-                e.PrefetchCount = 3;  // Maks 3 samtidige AI-ekstraksjoner
+                e.PrefetchCount = 3;
                 e.ConfigureConsumer<ExtractionConsumer>(context);
             });
             cfg.ReceiveEndpoint("duplicate-scan-queue", e =>
@@ -90,7 +144,7 @@ builder.Services.AddMassTransit(x =>
         // InMemory – ingen RabbitMQ nødvendig for utvikling
         x.UsingInMemory((context, cfg) =>
         {
-            cfg.ConcurrentMessageLimit = 3;  // Tilsvarer PrefetchCount for InMemory
+            cfg.ConcurrentMessageLimit = 3;
             cfg.ConfigureEndpoints(context);
         });
     }
@@ -129,6 +183,9 @@ builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
 
 var app = builder.Build();
+
+// Aspire health check endpoints
+app.MapDefaultEndpoints();
 
 app.UseCors();
 app.UseAuthentication();
