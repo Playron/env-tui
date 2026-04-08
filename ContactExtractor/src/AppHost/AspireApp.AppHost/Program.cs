@@ -25,7 +25,7 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keyclo
     .WithEnvironment("KC_HEALTH_ENABLED", "true");
 
 // ── 4. Ollama + NuExtract ─────────────────────────────────────────
-var ollama = builder.AddOllama("ollama")
+var ollama = builder.AddOllama("ollama", port: 11434)
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithOpenWebUI();
