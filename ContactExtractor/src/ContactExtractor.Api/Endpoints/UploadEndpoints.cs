@@ -125,7 +125,7 @@ public static class UploadEndpoints
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        yield return new SseItem<SseProgressEvent>(evt) { EventType = evt.Stage };
+        yield return new SseItem<SseProgressEvent>(evt, evt.Stage);
         await Task.CompletedTask;
     }
 

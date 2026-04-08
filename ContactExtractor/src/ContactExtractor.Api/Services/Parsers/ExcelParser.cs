@@ -6,7 +6,7 @@ public class ExcelParser(ContactExtractionService extractionService) : IFilePars
 {
     static ExcelParser()
     {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        ExcelPackage.License.SetNonCommercialPersonal("ContactExtractor");
     }
 
     public bool CanParse(string fileExtension) =>

@@ -1,6 +1,5 @@
 using ContactExtractor.Api.Domain;
 using ContactExtractor.Api.Services;
-using FluentAssertions;
 
 namespace ContactExtractor.Tests;
 
@@ -33,7 +32,7 @@ public class DuplicateDetectionTests
         var a = MakeContact(Guid.Empty, email: "ola@example.no");
         var b = MakeContact(Guid.Empty, email: "ola@example.no");
 
-        _service.Score(a, b).Should().Be(1.0);
+        _service.Score(a, b).ShouldBe(1.0);
     }
 
     [Fact]
@@ -42,7 +41,7 @@ public class DuplicateDetectionTests
         var a = MakeContact(Guid.Empty, phone: "99887766");
         var b = MakeContact(Guid.Empty, phone: "99887766");
 
-        _service.Score(a, b).Should().Be(0.9);
+        _service.Score(a, b).ShouldBe(0.9);
     }
 
     [Fact]
@@ -51,7 +50,7 @@ public class DuplicateDetectionTests
         var a = MakeContact(Guid.Empty, email: "alice@example.com", firstName: "Alice", lastName: "Smith");
         var b = MakeContact(Guid.Empty, email: "bob@example.com",   firstName: "Bob",   lastName: "Jones");
 
-        _service.Score(a, b).Should().BeLessThan(0.7);
+        _service.Score(a, b).ShouldBeLessThan(0.7);
     }
 
     [Fact]
@@ -60,7 +59,7 @@ public class DuplicateDetectionTests
         var a = MakeContact(Guid.Empty, firstName: "Ola",  lastName: "Nordmann", org: "Eksempel AS");
         var b = MakeContact(Guid.Empty, firstName: "Ola",  lastName: "Nordmann", org: "Eksempel AS");
 
-        _service.Score(a, b).Should().BeGreaterOrEqualTo(0.8);
+        _service.Score(a, b).ShouldBeGreaterThanOrEqualTo(0.8);
     }
 
     [Fact]
@@ -76,14 +75,14 @@ public class DuplicateDetectionTests
 
         var groups = _service.FindDuplicates(contacts);
 
-        groups.Should().HaveCount(1);
-        groups[0].Indices.Should().HaveCount(2);
+        groups.ShouldHaveCount(1);
+        groups[0].Indices.ShouldHaveCount(2);
     }
 
     [Fact]
     public void FindDuplicates_ReturnsEmpty_WhenNoContacts()
     {
-        _service.FindDuplicates([]).Should().BeEmpty();
+        _service.FindDuplicates([]).ShouldBeEmpty();
     }
 
     [Fact]
@@ -97,7 +96,7 @@ public class DuplicateDetectionTests
             MakeContact(id, email: "carol@c.com", firstName: "Carol", lastName: "Clark")
         };
 
-        _service.FindDuplicates(contacts).Should().BeEmpty();
+        _service.FindDuplicates(contacts).ShouldBeEmpty();
     }
 
     [Theory]
@@ -108,10 +107,10 @@ public class DuplicateDetectionTests
     {
         var score = DuplicateDetectionService.JaroWinkler(s1, s2);
         if (expected is double d)
-            score.Should().BeApproximately(d, 0.01);
+            score.ShouldBe(d, 0.01);
         else if ((bool)expected)
-            score.Should().BeGreaterThan(0.7);
+            score.ShouldBeGreaterThan(0.7);
         else
-            score.Should().BeLessThan(0.5);
+            score.ShouldBeLessThan(0.5);
     }
 }

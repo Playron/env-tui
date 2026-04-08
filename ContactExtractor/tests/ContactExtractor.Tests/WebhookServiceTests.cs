@@ -1,5 +1,4 @@
 using ContactExtractor.Api.Services;
-using FluentAssertions;
 
 namespace ContactExtractor.Tests;
 
@@ -9,8 +8,8 @@ public class WebhookServiceTests
     public void ComputeSignature_ReturnsSha256PrefixedHex()
     {
         var signature = WebhookService.ComputeSignature("secret123", "{\"event\":\"test\"}");
-        signature.Should().StartWith("sha256=");
-        signature.Length.Should().Be(71); // "sha256=" + 64 hex chars
+        signature.ShouldStartWith("sha256=");
+        signature.Length.ShouldBe(71); // "sha256=" + 64 hex chars
     }
 
     [Fact]
@@ -18,7 +17,7 @@ public class WebhookServiceTests
     {
         var sig1 = WebhookService.ComputeSignature("key", "payload");
         var sig2 = WebhookService.ComputeSignature("key", "payload");
-        sig1.Should().Be(sig2);
+        sig1.ShouldBe(sig2);
     }
 
     [Fact]
@@ -26,6 +25,6 @@ public class WebhookServiceTests
     {
         var sig1 = WebhookService.ComputeSignature("secret1", "same payload");
         var sig2 = WebhookService.ComputeSignature("secret2", "same payload");
-        sig1.Should().NotBe(sig2);
+        sig1.ShouldNotBe(sig2);
     }
 }
